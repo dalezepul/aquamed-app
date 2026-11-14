@@ -1,0 +1,150 @@
+rules_version = '2';
+
+// Caregiver pairing (src/services/pairing.ts). Only the two uids of a pair can see it.
+// Not enforced here: max 3 caregivers per patient (client-side; rules can't count documents), and whether
+// patientPlus/caregiverPlus are true (client-reported; no server to check store receipts). Rules only keep them consistent.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function pairData(pairId) { return get(/databases/$(database)/documents/pairs/$(pairId)).data; }
+    function isMember(pairId) {
+      let p = pairData(pairId);
+      return signedIn() && (uid() == p.patientUid || uid() == p.caregiverUid);
+    }
+    function isPatient(pairId) { return signedIn() && uid() == pairData(pairId).patientUid; }
+    // Latest ISO day ("YYYYMMDD", dashes dropped) that is "today" somewhere on Earth (UTC+14).
+    function latestToday() {
+      let t = request.time + duration.value(14, 'h');
+      return string(t.year() * 10000 + t.month() * 100 + t.day());
+    }
+
+    // One-time 8-digit invite, created by the patient, redeemed by a caregiver.
+    match /pairInvites/{code} {
+      // get by code; list only your own (query must filter patientUid == your uid), so others' codes can't be enumerated.
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.patientUid == uid();
+      allow create: if signedIn()
+        && code.matches('^[0-9]{8}$')
+        && request.resource.data.keys().hasOnly(['patientUid', 'patientName', 'expiresAt', 'used', 'patientPlus'])
+        && request.resource.data.get('patientPlus', false) is bool
+        && request.resource.data.patientUid == uid()
+        && request.resource.data.patientName is string
+        && request.resource.data.patientName.size() <= 60
+        && request.resource.data.used == false
+        && request.resource.data.expiresAt is number
+        && request.resource.data.expiresAt <= request.time.toMillis() + 11 * 60 * 1000;
+      // Single use: unused + unexpired → used by the caller, in the same batch that creates the pair.
+      allow update: if signedIn()
+        && resource.data.used == false
+        && resource.data.expiresAt > request.time.toMillis()
+        && resource.data.patientUid != uid()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedBy'])
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == uid()
+        && existsAfter(/databases/$(database)/documents/pairs/$(resource.data.patientUid + '_' + uid()));
+      allow delete: if signedIn() && resource.data.patientUid == uid();
+    }
+
+    match /pairs/{pairId} {
+      function inviteOk(data) {
+        let path = /databases/$(database)/documents/pairInvites/$(data.inviteCode);
+        let before = get(path).data;
+        return before.patientUid == data.patientUid
+          && before.patientName == data.patientName
+          && before.used == false
+          && before.get('patientPlus', true) == data.patientPlus
+          && before.expiresAt > request.time.toMillis()
+          && getAfter(path).data.usedBy == uid();
+      }
+
+      allow read: if signedIn() && (resource.data.patientUid == uid() || resource.data.caregiverUid == uid());
+      // Only the caregiver creates it, with a valid invite that is burnt in the same batch.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['patientUid', 'caregiverUid', 'patientName', 'caregiverName', 'shareWater', 'createdAt', 'inviteCode', 'pushTokens', 'plusBy', 'patientPlus', 'caregiverPlus'])
+        && request.resource.data.keys().hasAll(['plusBy', 'patientPlus', 'caregiverPlus'])
+        && request.resource.data.patientPlus is bool
+        && request.resource.data.caregiverPlus is bool
+        && ((request.resource.data.plusBy == 'patient' && request.resource.data.patientPlus == true)
+          || (request.resource.data.plusBy == 'caregiver' && request.resource.data.caregiverPlus == true))
+        && request.resource.data.caregiverUid == uid()
+        && pairId == request.resource.data.patientUid + '_' + uid()
+        && request.resource.data.caregiverName is string
+        && request.resource.data.caregiverName.size() <= 60
+        && request.resource.data.shareWater == false
+        && inviteOk(request.resource.data);
+      // Patient: water sharing, own push token and Plus flag. Caregiver: own name, push token and Plus flag. Nobody changes the uids or plusBy.
+      allow update: if signedIn() && (
+        (uid() == resource.data.patientUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shareWater', 'patientPush', 'patientPlus'])
+          && request.resource.data.shareWater is bool
+          && request.resource.data.get('patientPlus', true) is bool
+          && (!('patientPush' in request.resource.data) || request.resource.data.patientPush is map))
+        || (uid() == resource.data.caregiverUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['caregiverName', 'pushTokens', 'caregiverPlus'])
+          && request.resource.data.get('caregiverPlus', false) is bool));
+      allow delete: if signedIn() && (resource.data.patientUid == uid() || resource.data.caregiverUid == uid());
+
+      // Either side may delete (unpairing wipes the shared data); only the patient writes.
+      match /schedule/{docId} {
+        allow read, delete: if isMember(pairId);
+        allow create, update: if isPatient(pairId) && docId == 'current';
+      }
+      match /events/{eventId} {
+        allow read, delete: if isMember(pairId);
+        allow create, update: if isPatient(pairId)
+          && request.resource.data.type in ['taken', 'skipped', 'late']
+          && request.resource.data.at is number;
+      }
+      // Caregiver marks a dose / adds water for the patient; the patient's phone applies and deletes it.
+      // Both members may read/delete (the caregiver sees and can take back its own unapplied marks). No updates.
+      match /commands/{cmdId} {
+        allow read, delete: if isMember(pairId);
+        allow create: if signedIn()
+          && uid() == pairData(pairId).caregiverUid
+          && request.resource.data.by == uid()
+          && request.resource.data.at is number
+          && ((request.resource.data.type == 'dose'
+              && request.resource.data.keys().hasOnly(['type', 'medId', 'date', 'time', 'status', 'by', 'at'])
+              && request.resource.data.keys().hasAll(['type', 'medId', 'date', 'time', 'status', 'by', 'at'])
+              && request.resource.data.medId is string
+              && request.resource.data.medId.size() <= 64
+              && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+              && request.resource.data.date.replace('-', '') <= latestToday() // no marking future doses
+              && request.resource.data.time.matches('^[0-9]{2}:[0-9]{2}$')
+              && request.resource.data.status in ['taken', 'skipped'])
+            || (request.resource.data.type == 'water'
+              && request.resource.data.keys().hasOnly(['type', 'ml', 'by', 'at'])
+              && request.resource.data.keys().hasAll(['type', 'ml', 'by', 'at'])
+              && request.resource.data.ml is int
+              && request.resource.data.ml > 0
+              && request.resource.data.ml <= 1000
+              && pairData(pairId).shareWater == true));
+      }
+    }
+
+    // Optional account's cloud backup (src/services/cloudBackup.ts). Owner only; writes need a real
+    // (e-mail / Google) sign-in, so anonymous users can't use it as free storage.
+    match /users/{userId} {
+      function owner() { return signedIn() && uid() == userId; }
+      function account() { return owner() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+      allow read, delete: if owner();
+      allow create, update: if account()
+        && request.resource.data.keys().hasOnly(['updatedAt', 'device', 'appVersion', 'bytes', 'parts'])
+        && request.resource.data.updatedAt is number
+        && request.resource.data.device is string && request.resource.data.device.size() <= 100
+        && request.resource.data.appVersion is string && request.resource.data.appVersion.size() <= 20
+        && request.resource.data.bytes is int
+        && request.resource.data.parts is int && request.resource.data.parts >= 0 && request.resource.data.parts <= 100;
+      // Part i of the backup JSON (≤ 900 KB each, at most 100 parts).
+      match /backup/{part} {
+        allow read, delete: if owner();
+        allow create, update: if account()
+          && part.matches('^[0-9]{1,2}$')
+          && request.resource.data.keys().hasOnly(['data'])
+          && request.resource.data.data is string
+          && request.resource.data.data.size() <= 921600;
+      }
+    }
+  }
+}

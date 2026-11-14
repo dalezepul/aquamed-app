@@ -1,0 +1,147 @@
+{
+  "expo": {
+    "name": "AquaMed",
+    "slug": "AquaMedTracker",
+    "scheme": "aquamed",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aquamed.tracker",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.aquamed.tracker",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
+        "backgroundColor": "#0B1A22"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "com.android.vending.BILLING"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F5F2EC",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#061016"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#5EEAD4"
+        }
+      ],
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-background-task",
+      "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AquaMed, ilaç kutunuzun fotoğrafını seçebilmek için fotoğraflarınıza erişir.",
+          "cameraPermission": "AquaMed, ilaç kutunuzun fotoğrafını çekebilmek için kameranızı kullanır.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "userTrackingUsageDescription": "AquaMed, reklamları sizin için daha uygun hâle getirmek amacıyla bu tanımlayıcıyı kullanabilir. İzin vermezseniz yine reklam görürsünüz, yalnızca kişiselleştirilmez."
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "AquaToday",
+              "label": "AquaMed – Bugün",
+              "description": "Su ilerlemesi, bir bardak ekle ve sıradaki doz",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "AquaWater",
+              "label": "AquaMed – Su",
+              "description": "Su yüzdesi ve bir bardak ekle",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "AquaCare",
+              "label": "AquaMed – Takip",
+              "description": "Takip ettiğiniz yakınınızın bugünkü dozları",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
+      "expo-iap"
+    ],
+    "extra": {
+      "firebase": {
+        "apiKey": "",
+        "authDomain": "",
+        "projectId": "",
+        "storageBucket": "",
+        "messagingSenderId": "",
+        "appId": "",
+        "googleWebClientId": "",
+        "emulatorHost": ""
+      },
+      "admob": {
+        "androidBannerId": "ca-app-pub-3940256099942544/6300978111",
+        "androidInterstitialId": "ca-app-pub-3940256099942544/1033173712",
+        "androidRewardedId": "ca-app-pub-3940256099942544/5224354917"
+      }
+    }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
+  }
+}

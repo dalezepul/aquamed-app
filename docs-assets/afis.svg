@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="200" viewBox="0 0 1000 200" role="img" aria-label="AquaMed: İlaç ve su takibi · Android">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1b2540"/></linearGradient>
+<radialGradient id="r" cx=".12" cy=".5" r=".45"><stop offset="0" stop-color="#34d399" stop-opacity=".35"/><stop offset="1" stop-color="#34d399" stop-opacity="0"/></radialGradient></defs>
+<rect width="1000" height="200" rx="20" fill="url(#g)"/><rect width="1000" height="200" rx="20" fill="url(#r)"/>
+<g transform="translate(110 100) scale(1.9)"><path d="M-8 -26 C-8 -26 -26 -4 -26 8 A18 18 0 0 0 10 8 C10 -4 -8 -26 -8 -26Z" fill="#34d399"/><rect x="6" y="-4" width="14" height="30" rx="7" transform="rotate(35 13 11)" fill="#fbbf24"/><rect x="6" y="11" width="14" height="15" rx="0" transform="rotate(35 13 11)" fill="#f472b6" clip-path="none"/><animateTransform attributeName="transform" type="translate" additive="sum" values="0 0;0 -2;0 0" dur="3s" repeatCount="indefinite"/></g>
+<text x="210" y="95" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="50" font-weight="700" fill="#f1f5f9">AquaMed</text>
+<text x="212" y="138" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="22" fill="#a9b8cc">İlaç ve su takibi · Android</text>
+<rect x="212" y="158" width="80" height="5" rx="2.5" fill="#34d399"/>
+</svg>
